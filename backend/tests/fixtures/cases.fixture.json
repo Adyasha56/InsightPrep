@@ -1,0 +1,20 @@
+[
+  {
+    "id": "case-normal",
+    "jd": "We need a software engineer with 5+ years of React experience.",
+    "company_url": "http://mock-company.test",
+    "days": 5
+  },
+  {
+    "id": "case-different-days",
+    "jd": "We need a software engineer with 5+ years of React experience.",
+    "company_url": "http://mock-company.test",
+    "days": 10
+  },
+  {
+    "id": "case-failing",
+    "jd": "FAIL_MARKER this case is intentionally designed to fail.",
+    "company_url": "http://mock-company.test",
+    "days": 5
+  }
+]
