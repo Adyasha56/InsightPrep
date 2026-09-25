@@ -1,0 +1,4 @@
+# Claude Code / agent tooling — not part of the project deliverable
+.agents/
+.claude/
+skills-lock.json
