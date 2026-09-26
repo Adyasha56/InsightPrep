@@ -1,8 +1,137 @@
 # InsightPrep
 
-AI-powered interview preparation kits generated from a job description and a company website. See `Rules.md` for the full engineering specification this project follows.
+AI-powered interview preparation kits generated from a job description and a company website: company research, requirement extraction, questions, flashcards, and a deterministic day-by-day study schedule — plus an editable builder, safe section-by-section regeneration, and a flashcard practice mode with confidence tracking.
 
-This README is filled in phase by phase; sections not listed here yet will be added as those phases are implemented.
+## Architecture
+
+```
+                    ┌────────────────────────────┐
+                    │          Browser             │
+                    │   (React 19, rendered pages) │
+                    └──────────────┬───────────────┘
+                                   │ HTTPS, JSON, httpOnly session cookie
+                                   ▼
+                    ┌────────────────────────────┐
+                    │   Next.js 16 (App Router)    │
+                    │   frontend/  — port 3000     │
+                    └──────────────┬───────────────┘
+                                   │ fetch() via lib/api/* (one typed
+                                   │ function per backend endpoint)
+                                   ▼
+                    ┌────────────────────────────┐
+                    │      Express API (backend)   │
+                    │      backend/  — port 5000    │
+                    │                               │
+                    │  auth · kits · research ·     │
+                    │  generation · regeneration ·  │
+                    │  practice · evaluation        │
+                    └───────┬───────────┬───────────┘
+                            │           │
+                Mongoose    │           │ @google/genai SDK
+                            ▼           ▼
+                 ┌──────────────┐  ┌───────────────────────┐
+                 │   MongoDB    │  │   Google Gemini API     │
+                 │   (Atlas)    │  │   (structured JSON       │
+                 │ users, kits  │  │   generation, per-call   │
+                 └──────────────┘  │   zod re-validation)     │
+                                    └───────────────────────┘
+
+     The backend also makes outbound HTTPS requests directly to the
+     target company's website during research — a bounded, robots.txt-
+     respecting, SSRF-checked crawl (see "Company Research" below).
+```
+
+## Tech Stack
+
+**Backend** (`backend/`)
+- Node.js + TypeScript, Express 5
+- MongoDB (Atlas) via Mongoose — one `Kit` document per prep kit, one `User` document per account
+- Zod — request validation, and the single `draftKitSchema` reused as the one source of truth across generation, edits (Phase 10), regeneration (Phase 11), and practice (Phase 12)
+- `@google/genai` (Gemini) — structured JSON generation only; every response is independently re-validated, never trusted blindly
+- `jsonwebtoken` + `bcryptjs`, httpOnly cookies — session auth
+- `cheerio` — HTML cleaning/text extraction during company research
+- `helmet`, `cors`, `morgan`, `cookie-parser` — standard Express hardening/logging middleware
+- Vitest + Supertest — unit and integration tests; integration tests spin up a real disposable local `mongod` process rather than mocking the database
+- `tsx` — dev/watch server and the CLI batch evaluator entry point
+
+**Frontend** (`frontend/`)
+- Next.js 16 (App Router), React 19, TypeScript
+- Tailwind CSS v4 — a small hand-built component set (`components/ui`, `components/feedback`, `components/layout`), no UI component library
+- No client state library — plain `useState`/`useEffect`, one typed `fetch` wrapper per API domain (`lib/api/*`)
+
+**Tooling**
+- ESLint (frontend), `tsc --noEmit` typecheck scripts (both apps)
+- Playwright — installed ephemerally per manual verification pass (not a persisted dependency) to drive real-browser checks against the live backend + database
+
+## Data Flow
+
+```
+ 1. Register / Login  ───────────────────────────────►  httpOnly session cookie issued
+                                                                  │
+ 2. Dashboard  ◄──────────────────────────────────────────────────┘
+      │  "Create a new kit": job description + company URL + days available
+      ▼
+ 3. POST /api/kits                     kit saved, generationStatus = "idle"
+      │
+      ▼
+ 4. POST /api/kits/:id/generate
+      │
+      ├─► Research (company-research.service)   bounded crawl, robots.txt, SSRF-checked
+      │
+      ├─► Requirement extraction (Gemini)  ────────────►  role.requirements[]
+      ├─► Company brief (Gemini, grounded in research; sources set by app code)
+      ├─► Role analysis (Gemini, echoes the same requirements)
+      ├─► Question generation × 4 categories (Gemini)  ──►  questions[]
+      │        │
+      │        ▼
+      ├─► Coverage check (deterministic, no Gemini)  ──►  any MUST requirement uncovered?
+      │        │ yes                                            │ no
+      │        ▼                                                │
+      │  Second-pass targeted question generation (Gemini)      │
+      │        │                                                │
+      │        └───────────────────┬────────────────────────────┘
+      │                            ▼
+      ├─► Flashcard generation (Gemini)  ──────────────►  flashcards[]
+      │
+      ├─► Deterministic schedule allocation (no Gemini)  ──►  schedule.days[]
+      │
+      └─► validateDraftKit()  ──►  persisted, generationStatus = "completed"
+      │
+      ▼
+ 5. Kit Detail page
+      Today's Focus (today's schedule day) · stats · Role & Requirements ·
+      Coverage · Company Brief / Questions / Flashcards (editable) ·
+      Schedule (read-only, day-by-day) · Practice entry point
+      │
+      ├─► PATCH /api/kits/:id                     edit brief / questions / flashcards
+      │        origin + edited tracked per item — never silently overwritten
+      │
+      ├─► POST /api/kits/:id/regenerate            redo exactly one section:
+      │        target: company_brief | schedule | one question category
+      │        protects origin === "user" || edited === true
+      │
+      └─► Practice flashcards
+               PATCH /api/kits/:id/flashcards/:id/practice   confidence: low | medium | high
+               priority order each session: never-practiced → low → medium → high
+```
+
+## Running Locally
+
+Both apps read from their own `.env` (`backend/.env`, `frontend/.env.local`) — see each app's `.env.example` for the full list of required variables (`MONGODB_URI`, `JWT_SECRET`, `GEMINI_API_KEY` for the backend; `NEXT_PUBLIC_API_URL` for the frontend).
+
+```bash
+# terminal 1 — backend, http://localhost:5000
+cd backend
+npm install
+npm run dev
+
+# terminal 2 — frontend, http://localhost:3000
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`, register an account, and create a kit. Generating a kit calls the real Gemini API, so it's subject to whatever rate limit/quota the configured `GEMINI_API_KEY` has — every other endpoint (editing, regenerating the schedule, practicing flashcards) works against already-persisted data and doesn't require a fresh Gemini call except regenerating the brief or a question category.
 
 ## Company Research / Retrieval Pipeline
 
@@ -181,3 +310,51 @@ The evaluator reads credentials from the same `.env` the server uses (see `.env.
 **Verified**: full flow (register → dashboard empty state → create kit → kit detail → dashboard showing the kit) driven end-to-end in a real headless browser against the real backend + MongoDB, at both desktop (1280px) and mobile (375px) — no console errors, no horizontal overflow, screenshots inspected directly.
 
 **Known limitations**: data fetching is client-side only (no SSR cookie-forwarding yet — a reasonable foundation-phase trade-off, not a correctness issue); the kit detail page is read-only/minimal by design (the full builder/editor is a later phase); no dark mode yet (token architecture supports adding it later without a rewrite).
+
+## Kit Builder & Editing
+
+Lets a user edit a generated kit's company brief, questions, and flashcards, add/delete/reorder/move-category on questions, and reopen the kit later with the same state — without ever silently discarding a hand-written or hand-edited item.
+
+**Content-state model** (`types/kit.types.ts`): every `Question`/`Flashcard` carries `origin: "generated" | "user"` and `edited: boolean`; `CompanyBrief` carries `edited`. Both are always computed **server-side** by diffing the incoming edit against the stored value — never trusted from the client, so they can't be spoofed or missed by a frontend bug. This is the single invariant every later phase (regeneration, practice) builds on: `origin === "user" || edited === true` means "never overwrite this automatically."
+
+**API**: `PATCH /api/kits/:kitId`, body `{ company_brief?, questions?, flashcards? }`. Full-array-replacement semantics for `questions`/`flashcards`: array order in the request becomes the new stored order (this is how reordering and moving a question between categories both work, with no separate "move" operation); an item with an `id` is an edit; an item with no `id` is a new user-owned item, minted a stable id in its own `"u"` namespace so it can never collide with a generated `"q"`/`"f"` id; an existing id simply omitted from the array is a deletion. `requirement_ids` is deliberately not accepted from the client at all — the server always keeps the existing value (or starts a new item at `[]`) — so "no invalid requirement reference" holds by construction, not by extra validation.
+
+**Side effects handled explicitly, not left stale**: `services/kit-update.service.ts` reconciles a deletion against the schedule (strips the stale id from every `schedule.days[].question_ids`, recomputing that day's `minutes`/`focus` with the exact same deterministic helpers Phase 7's scheduler uses) and against coverage (`checkCoverage()` re-run on the new question set) — both reused, never reimplemented. The result is re-validated through the same `draftKitSchema` every other persisted kit must satisfy, then persisted via the same `saveGeneratedDraft()` the generation pipeline already uses.
+
+**Frontend**: `features/kits/builder/` — `KitBuilder` (local editable draft + dirty tracking + explicit "Save changes", never autosave), `CompanyBriefEditor`, `QuestionCategorySection`/`QuestionCard` (edit, ↑/↓ reorder within a category, delete-with-confirm, a category dropdown for moving between categories), `AddQuestionForm`, `FlashcardEditor`, `SaveBar`. Origin/edited render as small tags ("Generated" / "Edited" / "Your question") so generated and user-owned content are visually distinguishable. On a failed save, local edits are kept exactly as-is and an error is shown — nothing is ever silently lost.
+
+**Known limitations**: `requirement_ids` aren't editable from the builder (a new question always starts unlinked; see coverage above) — this was a deliberate scope boundary, not an oversight. No frontend test framework was introduced for this phase; verification was real-browser end-to-end against the live backend instead.
+
+## Safe Regeneration
+
+Lets a user redo the company brief, one question category, or the schedule — without losing unrelated content or any user-owned edit, and without ever replacing the whole kit.
+
+**API**: `POST /api/kits/:kitId/regenerate`, body is a discriminated union: `{ target: "company_brief" }` | `{ target: "schedule" }` | `{ target: "category", category }`. Exactly one section per request.
+
+**Category regeneration** (`services/generation/kit-regeneration.service.ts`) partitions the target category's current questions into `protected` (`origin === "user" || edited === true` — covers hand-written questions, hand-edited ones, *and* a question that was simply moved into this category, since a category move is itself a diffed field that sets `edited: true`) and `replaceable` (`origin === "generated" && !edited`). Only `replaceable` questions are dropped; a fresh batch is generated by calling the exact same per-category generator function (and therefore the exact same prompt/schema) first-pass generation already uses, with fresh ids minted past the highest existing id anywhere in the kit. Every other category, all flashcards, the brief, and the role/requirements are untouched. Coverage and schedule are recomputed from the resulting question set with the same `checkCoverage()`/`createSchedule()` functions generation already uses.
+
+**Company brief regeneration** re-runs research and `generateCompanyBrief()` and fully replaces the brief — there's exactly one brief per kit, so unlike questions there's no sub-item to partially protect; this is a deliberate "redo this whole section" action. **Schedule regeneration** is pure and synchronous — no Gemini call, no research — it just re-derives day placement from whatever question set is currently persisted, so it can never disturb question content or the origin/edited invariant.
+
+**Failure handling is deliberately different from initial generation**: nothing is persisted until the new draft has already passed `validateDraftKit()`, so a failed regeneration (e.g. a Gemini rate limit) leaves the stored kit's content completely untouched and its `generationStatus` stays `"completed"` — unlike first-time generation, a failed regeneration must never knock an already-working kit out of a usable state.
+
+**Frontend**: a `RegenerateButton` (two-step confirm, matching the delete interaction already used elsewhere) next to the Company Brief editor, one per question category section, and one in a small Schedule sub-section of the builder — all three disabled while the builder has unsaved local edits, since regeneration acts on the server's last-*saved* state and would otherwise silently discard local edits the moment its response replaces local state.
+
+## Flashcard Practice Mode
+
+One-card-at-a-time flashcard review with self-reported confidence, prioritising whatever the user is least confident about.
+
+**Data model**: a `confidence: "low" | "medium" | "high" | null` field directly on `Flashcard` (`null` = never practiced = "uncovered"). No separate progress store — practice state lives on the flashcard itself, so deleting a card (Kit Builder) or regenerating anything (regeneration never touches flashcards at all) can never orphan practice progress.
+
+**API**: `PATCH /api/kits/:kitId/flashcards/:flashcardId/practice`, body `{ confidence }`. Deliberately separate from the builder's edit endpoint — recording confidence isn't a content edit, so it never touches `edited`/`origin` and never recomputes coverage or schedule.
+
+**Priority ordering**: a pure, stable sort computed client-side each time practice mode opens — never-practiced first, then low, then medium, high last — so the next session always surfaces whatever needs the most attention. Session position itself isn't persisted (only each card's confidence is), so reloading or restarting always recomputes a fresh, up-to-date order rather than resuming a stale one.
+
+**Frontend**: `features/kits/practice/` — `PracticeMode` (front only → "Reveal Answer" → back + Low/Medium/High → records and advances immediately) at `/kits/:kitId/practice`, plus a live "Uncovered / Low / Medium / High" progress readout and a "Practice again" restart. The builder's flashcard cards also show a confidence tag, so progress is visible outside a practice session too.
+
+## Final Product Integration + Today's Focus
+
+Connects every existing capability into one legible page and adds one small creative feature — no backend changes; this phase is purely presentation over data the API already returns.
+
+**New read-only views** (`features/kits/`): `RoleSummary` (title/seniority/responsibilities/tagged requirements), `CoverageView` (every requirement tagged covered/uncovered, replacing a single terse alert), `ScheduleView` (day-by-day cards resolving `question_ids` to their prompts — the deterministic scheduler itself is untouched). The kit detail page is reordered into an orient → study → act hierarchy: status → Today's Focus → stats → Role & Requirements → Coverage → the editable builder → Schedule → Practice entry point. The dashboard's kit list also surfaces an "N uncovered" tag from data its lean projection already returns.
+
+**Creative feature — Today's Focus** (`features/kits/todays-focus.tsx`): a small card at the top of the kit page that maps elapsed calendar days since the kit's `createdAt` onto the deterministic schedule's day number (clamped to the schedule's range) and shows that day's focus, minutes, and questions, with a jump-link to the full schedule. It's a pure derived computation — no new persistence, no new backend field, can't drift from the real schedule — that directly answers "what should I study today," turning a static generated artifact into a daily, actionable prompt.
