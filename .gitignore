@@ -2,6 +2,7 @@
 .agents/
 .claude/
 skills-lock.json
+skills.md
 
 # Assessment prompt — not part of the submission
 Rules.md
