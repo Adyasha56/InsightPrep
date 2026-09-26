@@ -14,6 +14,10 @@ export const requirementSchema = z.object({
   priority: z.enum(["must", "nice"]),
 });
 
+// origin/edited (Phase 10 content-state model): which content a future
+// regenerator may safely replace. See types/kit.types.ts's ContentOrigin doc.
+const contentOriginSchema = z.enum(["generated", "user"]);
+
 export const questionSchema = z.object({
   id: z.string().min(1),
   prompt: z.string().min(1),
@@ -22,19 +26,28 @@ export const questionSchema = z.object({
   difficulty: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   category: z.enum(["technical", "behavioural", "system-design", "company-fit"]),
   requirement_ids: z.array(z.string().min(1)),
+  origin: contentOriginSchema,
+  edited: z.boolean(),
 });
+
+// Phase 12: self-reported practice confidence. null = never practiced.
+const flashcardConfidenceSchema = z.enum(["low", "medium", "high"]).nullable();
 
 export const flashcardSchema = z.object({
   id: z.string().min(1),
   front: z.string().min(1),
   back: z.string().min(1),
   requirement_ids: z.array(z.string().min(1)),
+  origin: contentOriginSchema,
+  edited: z.boolean(),
+  confidence: flashcardConfidenceSchema,
 });
 
 export const companyBriefSchema = z.object({
   summary: z.string(),
   what_they_do: z.string(),
   sources: z.array(z.string()),
+  edited: z.boolean(),
 });
 
 export const roleSchema = z.object({
@@ -180,3 +193,66 @@ export const createKitRequestSchema = z.object({
   company_url: z.string().trim().min(1, "company_url is required."),
   days_available: z.coerce.number().int().min(1).max(60),
 });
+
+// PATCH /api/kits/:kitId body (Phase 10 builder). `id` is optional on each
+// item: present = edit that existing item, absent = create a new
+// user-owned one. Omitting an existing id from the array is how the client
+// expresses "delete this one" — services/kit-update.service.ts reconciles
+// deletions against schedule/coverage.
+//
+// requirement_ids is deliberately NOT accepted here for questions or
+// flashcards. The server always keeps the existing value (or starts a new
+// item at `[]`), which makes "no invalid requirement references" true by
+// construction rather than by extra validation — this endpoint simply
+// cannot introduce a bad reference.
+export const updateQuestionInputSchema = z.object({
+  id: z.string().min(1).optional(),
+  prompt: z.string().min(1, "prompt is required."),
+  answer_outline: z.string().min(1, "answer_outline is required."),
+  difficulty: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  category: z.enum(["technical", "behavioural", "system-design", "company-fit"]),
+});
+
+export const updateFlashcardInputSchema = z.object({
+  id: z.string().min(1).optional(),
+  front: z.string().min(1, "front is required."),
+  back: z.string().min(1, "back is required."),
+});
+
+export const updateCompanyBriefInputSchema = z.object({
+  summary: z.string().min(1, "summary is required."),
+  what_they_do: z.string().min(1, "what_they_do is required."),
+});
+
+export const updateKitRequestSchema = z.object({
+  company_brief: updateCompanyBriefInputSchema.optional(),
+  questions: z.array(updateQuestionInputSchema).optional(),
+  flashcards: z.array(updateFlashcardInputSchema).optional(),
+});
+
+export type UpdateQuestionInput = z.infer<typeof updateQuestionInputSchema>;
+export type UpdateFlashcardInput = z.infer<typeof updateFlashcardInputSchema>;
+export type UpdateKitRequest = z.infer<typeof updateKitRequestSchema>;
+
+// POST /api/kits/:kitId/regenerate body (Phase 11). Exactly one section is
+// regenerated per request — never the whole kit — so the target is a
+// discriminated union rather than a set of optional flags.
+export const regenerateKitRequestSchema = z.discriminatedUnion("target", [
+  z.object({ target: z.literal("company_brief") }),
+  z.object({ target: z.literal("schedule") }),
+  z.object({
+    target: z.literal("category"),
+    category: z.enum(["technical", "behavioural", "system-design", "company-fit"]),
+  }),
+]);
+
+export type RegenerateKitRequest = z.infer<typeof regenerateKitRequestSchema>;
+
+// PATCH /api/kits/:kitId/flashcards/:flashcardId/practice body (Phase 12).
+// Recording confidence is never "no value" from the client — null is only
+// ever the server-side default before a card has been practiced at all.
+export const recordFlashcardPracticeRequestSchema = z.object({
+  confidence: z.enum(["low", "medium", "high"]),
+});
+
+export type RecordFlashcardPracticeRequest = z.infer<typeof recordFlashcardPracticeRequestSchema>;

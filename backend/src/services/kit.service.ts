@@ -15,13 +15,22 @@ export async function createKit(ownerId: string, input: CreateKitInput): Promise
     owner: ownerId,
     generationStatus: "idle",
     source: input,
-    company_brief: { summary: "", what_they_do: "", sources: [] },
+    company_brief: { summary: "", what_they_do: "", sources: [], edited: false },
     role: { title: "", seniority: "", responsibilities: [], requirements: [] },
     questions: [],
     flashcards: [],
     schedule: { days_available: input.days_available, days: [] },
     coverage: { uncovered_requirement_ids: [], passes: 0 },
   });
+}
+
+// Lean projection for a dashboard list — excludes the heavy generated
+// arrays (questions, flashcards, requirements, schedule days) that a list
+// view never renders.
+export async function listKits(ownerId: string): Promise<KitDocument[]> {
+  return Kit.find({ owner: ownerId })
+    .select("generationStatus generationError source role.title coverage.uncovered_requirement_ids createdAt updatedAt")
+    .sort({ updatedAt: -1 });
 }
 
 // Loads a kit and enforces ownership — a user must never be able to read or

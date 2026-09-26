@@ -33,13 +33,29 @@ const MAX_CONTEXT_TEXT_PER_PAGE = 800;
 // runtime guard (RULES.md section 15).
 const MAX_COVERAGE_PASSES = 2;
 
-function assignIds<T extends object>(items: T[], prefix: string, startAt = 1): (T & { id: string })[] {
-  return items.map((item, index) => ({ ...item, id: `${prefix}${startAt + index}` }));
+// Stamps a stable id plus the content-state fields (Phase 10): everything
+// that comes out of generation starts as "generated" and unedited. Only
+// application code (never Gemini) assigns these, matching how ids are
+// already handled. Exported (Phase 11) so category regeneration can reuse
+// the exact same id/state-stamping logic instead of duplicating it.
+export function assignIds<T extends object>(
+  items: T[],
+  prefix: string,
+  startAt = 1
+): (T & { id: string; origin: "generated"; edited: false })[] {
+  return items.map((item, index) => ({
+    ...item,
+    id: `${prefix}${startAt + index}`,
+    origin: "generated" as const,
+    edited: false as const,
+  }));
 }
 
 // Question generation benefits from hiring/engineering signals specifically
 // (interview process, tech culture) rather than the full research corpus.
-function buildQuestionCompanyContext(research: CompanyResearchResult): string {
+// Exported (Phase 11) so category regeneration builds identical context to
+// what first-pass generation used for that category.
+export function buildQuestionCompanyContext(research: CompanyResearchResult): string {
   const relevant = research.pages.filter((page) => HIRING_CONTEXT_SOURCE_TYPES.includes(page.sourceType));
   if (relevant.length === 0) return "";
   return relevant
@@ -91,7 +107,7 @@ export async function generateDraftKit(input: GenerateDraftKitInput): Promise<Dr
   );
 
   const draftFlashcards = await generateFlashcards(requirements, questions);
-  const flashcards: Flashcard[] = assignIds(draftFlashcards, "f");
+  const flashcards: Flashcard[] = assignIds(draftFlashcards, "f").map((flashcard) => ({ ...flashcard, confidence: null }));
   console.log("[kit-generation] flashcards completed", { count: flashcards.length });
 
   let passes = 1;

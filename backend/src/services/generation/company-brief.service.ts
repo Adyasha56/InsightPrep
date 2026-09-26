@@ -35,6 +35,7 @@ export async function generateCompanyBrief(companyUrl: string, research: Company
       summary: "No usable company information could be retrieved from the supplied website.",
       what_they_do: "Unknown — company research did not return any usable pages.",
       sources: [],
+      edited: false,
     };
   }
 
@@ -55,5 +56,5 @@ export async function generateCompanyBrief(companyUrl: string, research: Company
     schema: companyBriefResponseSchema,
   });
 
-  return { ...result, sources: pages.map((page) => page.url) };
+  return { ...result, sources: pages.map((page) => page.url), edited: false };
 }

@@ -7,7 +7,16 @@ function requirement(id: string, priority: "must" | "nice", kind: Requirement["k
 }
 
 function question(id: string, requirementIds: string[]): Question {
-  return { id, prompt: "?", answer_outline: "...", difficulty: 1, category: "technical", requirement_ids: requirementIds };
+  return {
+    id,
+    prompt: "?",
+    answer_outline: "...",
+    difficulty: 1,
+    category: "technical",
+    requirement_ids: requirementIds,
+    origin: "generated",
+    edited: false,
+  };
 }
 
 describe("checkCoverage", () => {
@@ -82,7 +91,18 @@ describe("checkCoverage", () => {
   it("never inspects question prompt/answer text to infer coverage", () => {
     const result = checkCoverage({
       role: { requirements: [requirement("r1", "must")] },
-      questions: [{ id: "q1", prompt: "Talk about r1", answer_outline: "r1 details", difficulty: 1, category: "technical", requirement_ids: [] }],
+      questions: [
+        {
+          id: "q1",
+          prompt: "Talk about r1",
+          answer_outline: "r1 details",
+          difficulty: 1,
+          category: "technical",
+          requirement_ids: [],
+          origin: "generated",
+          edited: false,
+        },
+      ],
     });
 
     expect(result.uncovered_requirement_ids).toEqual(["r1"]);

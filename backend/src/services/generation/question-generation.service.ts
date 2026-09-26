@@ -9,7 +9,7 @@ export interface QuestionGenerationContext {
   companyContext: string;
 }
 
-type DraftQuestion = Omit<Question, "id">;
+type DraftQuestion = Omit<Question, "id" | "origin" | "edited">;
 
 // Requirements relevant to each category are filtered in application code
 // rather than trusted to the model — this keeps category boundaries

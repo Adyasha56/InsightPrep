@@ -11,6 +11,8 @@ function question(id: string, overrides: Partial<Question> = {}): Question {
     difficulty: 1,
     category: "technical",
     requirement_ids: [],
+    origin: "generated",
+    edited: false,
     ...overrides,
   };
 }

@@ -14,6 +14,9 @@ const requirementSchema = new Schema(
   { _id: false }
 );
 
+// origin/edited (Phase 10): the content-state model a future regenerator
+// relies on to know which questions/flashcards it may safely replace.
+// Defaulted so pre-Phase-10 documents still read back as valid.
 const questionSchema = new Schema(
   {
     id: { type: String, required: true },
@@ -26,6 +29,8 @@ const questionSchema = new Schema(
       required: true,
     },
     requirement_ids: { type: [String], default: [] },
+    origin: { type: String, enum: ["generated", "user"], default: "generated" },
+    edited: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -36,6 +41,10 @@ const flashcardSchema = new Schema(
     front: { type: String, required: true },
     back: { type: String, required: true },
     requirement_ids: { type: [String], default: [] },
+    origin: { type: String, enum: ["generated", "user"], default: "generated" },
+    edited: { type: Boolean, default: false },
+    // Phase 12: self-reported practice confidence. null = never practiced.
+    confidence: { type: String, enum: ["low", "medium", "high", null], default: null },
   },
   { _id: false }
 );
@@ -45,6 +54,7 @@ const companyBriefSchema = new Schema(
     summary: { type: String, default: "" },
     what_they_do: { type: String, default: "" },
     sources: { type: [String], default: [] },
+    edited: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -107,7 +117,7 @@ export interface KitDocument extends Document {
   generationStatus: GenerationStatus;
   generationError?: GenerationError;
   source: { job_description: string; company_url: string; days_available: number };
-  company_brief: { summary: string; what_they_do: string; sources: string[] };
+  company_brief: { summary: string; what_they_do: string; sources: string[]; edited: boolean };
   role: {
     title: string;
     seniority: string;
@@ -121,8 +131,18 @@ export interface KitDocument extends Document {
     difficulty: number;
     category: string;
     requirement_ids: string[];
+    origin: string;
+    edited: boolean;
   }[];
-  flashcards: { id: string; front: string; back: string; requirement_ids: string[] }[];
+  flashcards: {
+    id: string;
+    front: string;
+    back: string;
+    requirement_ids: string[];
+    origin: string;
+    edited: boolean;
+    confidence: string | null;
+  }[];
   schedule: {
     days_available: number;
     days: { day: number; focus: string; question_ids: string[]; minutes: number }[];

@@ -11,7 +11,7 @@ export interface MissingQuestionContext {
   companyContext: string;
 }
 
-type DraftQuestion = Omit<Question, "id">;
+type DraftQuestion = Omit<Question, "id" | "origin" | "edited">;
 
 function buildRoleContext(role: MissingQuestionContext["role"]): string {
   const lines = [`Title: ${role.title || "Not specified"}`, `Seniority: ${role.seniority || "Not specified"}`];

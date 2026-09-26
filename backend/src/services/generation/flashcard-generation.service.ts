@@ -2,7 +2,7 @@ import { generateValidated } from "../ai/gemini.client";
 import { buildFlashcardGenerationPrompt, buildFlashcardResponseSchema, flashcardResponseJsonSchema } from "../ai/prompts/flashcard-generation.prompt";
 import { Flashcard, Question, Requirement } from "../../types/kit.types";
 
-type DraftFlashcard = Omit<Flashcard, "id">;
+type DraftFlashcard = Omit<Flashcard, "id" | "origin" | "edited" | "confidence">;
 
 export async function generateFlashcards(requirements: Requirement[], questions: Question[]): Promise<DraftFlashcard[]> {
   if (requirements.length === 0 && questions.length === 0) {

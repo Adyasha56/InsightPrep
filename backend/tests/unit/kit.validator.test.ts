@@ -6,7 +6,12 @@ import { AppError } from "../../src/utils/AppError";
 function validDraftKit(): DraftKit {
   return {
     source: { job_description: "JD text", company_url: "https://example.com", days_available: 5 },
-    company_brief: { summary: "A company.", what_they_do: "Builds things.", sources: ["https://example.com"] },
+    company_brief: {
+      summary: "A company.",
+      what_they_do: "Builds things.",
+      sources: ["https://example.com"],
+      edited: false,
+    },
     role: {
       title: "Backend Engineer",
       seniority: "Senior",
@@ -21,9 +26,13 @@ function validDraftKit(): DraftKit {
         difficulty: 2,
         category: "technical",
         requirement_ids: ["r1"],
+        origin: "generated",
+        edited: false,
       },
     ],
-    flashcards: [{ id: "f1", front: "Event loop?", back: "...", requirement_ids: ["r1"] }],
+    flashcards: [
+      { id: "f1", front: "Event loop?", back: "...", requirement_ids: ["r1"], origin: "generated", edited: false, confidence: null },
+    ],
     schedule: {
       days_available: 5,
       days: [
