@@ -1,0 +1,378 @@
+@import "tailwindcss";
+
+/* Hallmark · macrostructure: Narrative Workflow · theme: Hum (pivoted from Almanac)
+ * nav: N1b SaaS three-section (rounded) · footer: Ft2 Inline single line
+ * display/body: Plus Jakarta Sans (rounded sans, weight 600 display) · label/mono: JetBrains Mono
+ * paper oklch(97% 0.012 95, pear-cream) · accents: pear oklch(86% 0.18 95) · cyan oklch(66% 0.18 235) · coral oklch(68% 0.24 18)
+ * studied: no (principles-only reference: usehallmark.com/examples/hum-07)
+ */
+
+:root {
+  /* Colour — Hum's calibration palette. Multi-accent: pear = primary
+     action, cyan = link/hover-tint, coral = single high-energy moment,
+     mint/lavender = occasional. Never pure white/black (Hum's own ban). */
+  --color-paper: oklch(97% 0.012 95);
+  --color-paper-2: oklch(94% 0.016 95);
+  --color-paper-3: oklch(91% 0.02 95);
+  --color-rule: oklch(88% 0.016 95);
+  --color-neutral: oklch(52% 0.012 95);
+  --color-muted: oklch(42% 0.012 95);
+  --color-ink: oklch(20% 0.012 250);
+
+  --color-accent: oklch(86% 0.18 95); /* pear-yellow — primary */
+  --color-accent-deep: oklch(72% 0.17 90); /* button edge/shadow */
+  --color-accent-bg: oklch(95% 0.03 95);
+  --color-cyan: oklch(66% 0.18 235); /* secondary — links, hover tints */
+  --color-cyan-bg: oklch(94% 0.03 235);
+  --color-coral: oklch(68% 0.24 18); /* pop — one high-energy moment per page */
+  --color-coral-bg: oklch(94% 0.035 18);
+  --color-mint: oklch(80% 0.16 150); /* occasional — success */
+  --color-mint-bg: oklch(94% 0.03 150);
+  --color-lavender: oklch(74% 0.16 305); /* occasional — tags */
+  --color-lavender-bg: oklch(95% 0.025 305);
+
+  --color-focus: oklch(60% 0.19 235);
+
+  /* Status — mapped onto Hum's accents rather than a generic traffic-light
+     set, so status colour stays inside the theme's own palette. */
+  --color-success: oklch(45% 0.1 150);
+  --color-success-bg: var(--color-mint-bg);
+  --color-warning: oklch(55% 0.15 70);
+  --color-warning-bg: oklch(94% 0.035 80);
+  --color-danger: oklch(50% 0.18 18);
+  --color-danger-bg: var(--color-coral-bg);
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.25rem;
+  --text-3xl: 3rem;
+  --text-display-s: 3.5rem;
+  --text-display: 4.5rem;
+
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+
+  /* Hum is the rounded theme — no square corners on cards/pills/inputs. */
+  --radius-card: 20px;
+  --radius-pill: 999px;
+  --radius-input: 12px;
+  --rule-width: 1px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* canonical Hum easing — bouncy overshoot */
+  --ease-snap: cubic-bezier(0.22, 1, 0.36, 1); /* tick-ups, reveals */
+  --ease-press: cubic-bezier(0.2, 0.7, 0.3, 1); /* button push */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+}
+
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-paper-2: var(--color-paper-2);
+  --color-paper-3: var(--color-paper-3);
+  --color-rule: var(--color-rule);
+  --color-neutral: var(--color-neutral);
+  --color-muted: var(--color-muted);
+  --color-ink: var(--color-ink);
+  --color-accent: var(--color-accent);
+  --color-accent-deep: var(--color-accent-deep);
+  --color-accent-bg: var(--color-accent-bg);
+  --color-cyan: var(--color-cyan);
+  --color-cyan-bg: var(--color-cyan-bg);
+  --color-coral: var(--color-coral);
+  --color-coral-bg: var(--color-coral-bg);
+  --color-mint: var(--color-mint);
+  --color-mint-bg: var(--color-mint-bg);
+  --color-lavender: var(--color-lavender);
+  --color-lavender-bg: var(--color-lavender-bg);
+  --color-focus: var(--color-focus);
+  --color-success: var(--color-success);
+  --color-success-bg: var(--color-success-bg);
+  --color-warning: var(--color-warning);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-danger: var(--color-danger);
+  --color-danger-bg: var(--color-danger-bg);
+
+  /* Two families, no third, no serif anywhere — Hum's own rule. */
+  --font-display: var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-data: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --text-xs: var(--text-xs);
+  --text-sm: var(--text-sm);
+  --text-base: var(--text-base);
+  --text-md: var(--text-md);
+  --text-lg: var(--text-lg);
+  --text-xl: var(--text-xl);
+  --text-2xl: var(--text-2xl);
+  --text-3xl: var(--text-3xl);
+  --text-display-s: var(--text-display-s);
+  --text-display: var(--text-display);
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01" on;
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-style: normal;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.eyebrow,
+.mono-label {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* The emphasis highlighter tracks text across wraps instead of an
+ * absolutely-positioned bar (Hum's documented fix for the wrap bug). */
+em,
+.hl {
+  font-style: normal;
+  color: inherit;
+  background-image: linear-gradient(var(--hl, color-mix(in oklch, var(--color-accent) 55%, transparent)) 0 0);
+  background-repeat: no-repeat;
+  background-size: 100% 0.32em;
+  background-position: 0 82%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding-bottom: 0.02em;
+}
+
+/* Character moment: a small mark that pulses at rest — Hum signature move
+ * #5. Pure CSS, no image/Lottie. Collapses to static under reduced motion. */
+.character-mark {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 999px;
+  background: var(--color-accent);
+  animation: character-pulse 4s var(--ease-in-out) infinite;
+}
+
+@keyframes character-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.35);
+  }
+}
+
+/* Star-burst micro-celebration (Hum signature move #7) — fires once on a
+ * primary action's success, never auto-loops. */
+.star-burst {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background:
+    linear-gradient(90deg, transparent 47%, var(--color-coral) 47% 53%, transparent 53%),
+    linear-gradient(0deg, transparent 47%, var(--color-coral) 47% 53%, transparent 53%);
+  animation: star-burst 420ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes star-burst {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1.2) rotate(35deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.4) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+/* Hum button system — canonical push/soft/outline (signature move #1).
+ * Copied close to verbatim from the theme spec rather than reimprovised:
+ * shadow = a full-width solid colour edge + a separate soft ground shadow
+ * (never negative-spread), and the press is the feedback (lift on hover,
+ * press DOWN on :active) — no scale(), no spring overshoot on buttons. */
+.btn {
+  --btn-face: var(--color-accent);
+  --btn-ink: var(--color-ink);
+  --btn-edge: var(--color-accent-deep);
+  --btn-cast: color-mix(in oklch, var(--color-accent) 45%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: 0.8rem 1.4rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-base);
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--btn-ink);
+  background: var(--btn-face);
+  cursor: pointer;
+  position: relative;
+  isolation: isolate;
+  box-shadow:
+    0 4px 0 0 var(--btn-edge),
+    0 6px 12px -3px var(--btn-cast);
+  transform: translateY(0);
+  transition:
+    transform 140ms var(--ease-press),
+    box-shadow 140ms var(--ease-press),
+    background-color 160ms;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 0 0 var(--btn-edge),
+    0 12px 22px -4px var(--btn-cast);
+}
+.btn:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 0 var(--btn-edge),
+    0 2px 6px -2px var(--btn-cast);
+  transition-duration: 70ms;
+}
+.btn:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+  box-shadow: 0 4px 0 0 var(--btn-edge);
+}
+
+.btn--coral {
+  --btn-face: var(--color-coral);
+  --btn-edge: oklch(56% 0.22 18);
+  --btn-ink: oklch(98% 0.005 18);
+  --btn-cast: color-mix(in oklch, var(--color-coral) 45%, transparent);
+}
+.btn--cyan {
+  --btn-face: var(--color-cyan);
+  --btn-edge: oklch(54% 0.18 235);
+  --btn-ink: oklch(98% 0.005 235);
+  --btn-cast: color-mix(in oklch, var(--color-cyan) 45%, transparent);
+}
+.btn--ink {
+  --btn-face: var(--color-ink);
+  --btn-edge: oklch(10% 0.012 250);
+  --btn-ink: var(--color-paper);
+  --btn-cast: color-mix(in oklch, var(--color-ink) 35%, transparent);
+}
+
+.btn--soft {
+  background: color-mix(in oklch, var(--btn-face) 30%, var(--color-paper));
+  color: var(--color-ink);
+  box-shadow: none;
+}
+.btn--soft:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -6px var(--btn-cast);
+}
+.btn--soft:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.btn--outline {
+  background: transparent;
+  color: var(--color-ink);
+  box-shadow: none;
+  border: 1.5px solid var(--color-rule);
+}
+.btn--outline:hover {
+  border-color: var(--btn-face);
+  background: color-mix(in oklch, var(--btn-face) 14%, transparent);
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+.btn--outline:active {
+  transform: translateY(1px);
+}
+
+.btn--sm {
+  padding: 0.55rem 1rem;
+  font-size: var(--text-sm);
+}
+.btn--lg {
+  padding: 1rem 1.75rem;
+  font-size: var(--text-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .character-mark {
+    animation: none;
+  }
+
+  .star-burst {
+    display: none;
+  }
+
+  .btn:hover,
+  .btn:active,
+  .btn--soft:hover,
+  .btn--soft:active,
+  .btn--outline:hover,
+  .btn--outline:active {
+    transform: none;
+  }
+}
