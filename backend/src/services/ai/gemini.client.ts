@@ -4,6 +4,7 @@ import { sleep } from "../../utils/sleep.util";
 import { AppError } from "../../utils/AppError";
 import { ErrorCode } from "../../types/error-code.types";
 import { GenerateValidatedOptions } from "./ai.types";
+import { generateValidatedWithGroq, isGroqConfigured } from "./groq.client";
 
 let cachedClient: GoogleGenAI | null = null;
 
@@ -126,7 +127,7 @@ function extractJson(raw: string): unknown {
 // a small, bounded "repair" loop separate from (and on top of) the network
 // retry above, so a flaky provider error and a malformed response can't
 // multiply into an unbounded number of calls (RULES.md section 30).
-export async function generateValidated<T>(options: GenerateValidatedOptions<T>): Promise<T> {
+async function generateValidatedWithGemini<T>(options: GenerateValidatedOptions<T>): Promise<T> {
   const maxNetworkRetries = options.maxNetworkRetries ?? env.GEMINI_MAX_RETRIES;
   const maxRepairAttempts = options.maxRepairAttempts ?? 1;
 
@@ -158,4 +159,23 @@ export async function generateValidated<T>(options: GenerateValidatedOptions<T>)
     502,
     { issue: lastIssue }
   );
+}
+
+// Public entry point every generation service calls — unchanged signature,
+// so no call site needs to know a second provider exists. Gemini is always
+// tried first; only when it fails with a retryable error (rate limit or
+// outage — never an invalid-response or rejected-request failure, which
+// would just fail the same way on another provider too) and GROQ_API_KEY is
+// configured does this fall through to Groq for that same call. If Groq
+// isn't configured, behavior is identical to before this fallback existed.
+export async function generateValidated<T>(options: GenerateValidatedOptions<T>): Promise<T> {
+  try {
+    return await generateValidatedWithGemini(options);
+  } catch (error) {
+    const providerError = error instanceof AppError ? error : toProviderError(error);
+    if (isRetryableProviderError(providerError) && isGroqConfigured()) {
+      return await generateValidatedWithGroq(options);
+    }
+    throw providerError;
+  }
 }

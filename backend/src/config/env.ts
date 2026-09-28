@@ -15,6 +15,11 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().default("gemini-3.5-flash"),
   GEMINI_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
   GEMINI_MAX_RETRIES: z.coerce.number().int().nonnegative().default(2),
+  // Optional fallback provider: only used when Gemini exhausts its own
+  // retries with a retryable error (rate limit / outage). Unset means no
+  // fallback — behavior is identical to before this existed.
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
 
   CRAWLER_MAX_PAGES: z.coerce.number().int().positive().default(6),
